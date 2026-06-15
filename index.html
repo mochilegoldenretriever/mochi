@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mochi — Recettes de Friandises pour Chien</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet" />
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    
+    :root {
+      --cream: #fdf8f2;
+      --warm-brown: #6b4226;
+      --caramel: #c8813a;
+      --soft-gold: #e8c97a;
+      --dark: #2c1a0e;
+      --text: #3d2b1a;
+      --light-bg: #fef9f3;
+      --accent: #d4956a;
+      --green: #5a7a4a;
+      --border: #e8d5c0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Lato', sans-serif; background-color: var(--cream); color: var(--text); line-height: 1.7; }
+
+    /* PASSWORD GATE */
+    #password-gate {
+      position: fixed; inset: 0;
+      background: linear-gradient(160deg, #2c1a0e 0%, #6b4226 60%, #c8813a 100%);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; flex-direction: column; padding: 24px;
+    }
+    .gate-box {
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(232,201,122,0.3);
+      border-radius: 16px; padding: 40px 32px; text-align: center; max-width: 360px; width: 100%;
+    }
+    .gate-box .paw { font-size: 3rem; margin-bottom: 16px; display: block; }
+    .gate-box h2 { font-family: 'Playfair Display', serif; color: white; font-size: 1.6rem; margin-bottom: 8px; }
+    .gate-box p { color: rgba(255,255,255,0.7); font-size: 0.9rem; margin-bottom: 24px; }
+    .gate-box input {
+      width: 100%; padding: 12px 16px; border-radius: 8px;
+      border: 2px solid rgba(232,201,122,0.4); background: rgba(255,255,255,0.1);
+      color: white; font-size: 1rem; text-align: center; outline: none; margin-bottom: 12px;
+      font-family: 'Lato', sans-serif;
+    }
+    .gate-box input::placeholder { color: rgba(255,255,255,0.4); }
+    .gate-box input:focus { border-color: var(--soft-gold); }
+    .gate-box button {
+      width: 100%; padding: 13px; background: var(--caramel); color: white; border: none;
+      border-radius: 8px; font-size: 1rem; font-family: 'Lato', sans-serif; font-weight: 700;
+      cursor: pointer; letter-spacing: 0.05em; transition: background 0.2s;
+    }
+    .gate-box button:hover { background: var(--soft-gold); color: var(--dark); }
+    .gate-error { color: #ff9a8b; font-size: 0.85rem; margin-top: 10px; display: none; }
+    .gate-tagline { color: rgba(255,255,255,0.45); font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; margin-top: 24px; }
+
+    /* HERO */
+    .hero {
+      background: linear-gradient(160deg, #2c1a0e 0%, #6b4226 60%, #c8813a 100%);
+      color: white; text-align: center; padding: 80px 24px 60px; position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(232,201,122,0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero > * { position: relative; }
+    .hero-paw { font-size: 2.8rem; margin-bottom: 18px; display: block; }
+    .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 6vw, 3.4rem); line-height: 1.2; margin-bottom: 14px; }
+    .hero h1 em { font-style: italic; color: var(--soft-gold); }
+    .hero .subtitle { font-size: 0.88rem; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.8; }
+    .hero .author { font-size: 0.8rem; opacity: 0.5; margin-top: 10px; }
+
+    /* NAV */
+    nav {
+      background: var(--warm-brown); position: sticky; top: 0; z-index: 100;
+      display: flex; justify-content: center; flex-wrap: wrap; border-bottom: 2px solid var(--caramel);
+    }
+    nav a {
+      color: #f5e6d3; text-decoration: none; padding: 13px 16px; font-size: 0.8rem;
+      letter-spacing: 0.1em; text-transform: uppercase; transition: background 0.2s, color 0.2s; font-weight: 700;
+    }
+    nav a:hover { background: var(--caramel); color: white; }
+
+    /* LAYOUT */
+    .section-wrap { max-width: 800px; margin: 0 auto; padding: 60px 24px; }
+    .section-wrap + .section-wrap { border-top: 1px solid var(--border); }
+    .section-label { font-size: 0.72rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--caramel); font-weight: 700; margin-bottom: 8px; }
+    h2 { font-family: 'Playfair Display', serif; font-size: clamp(1.7rem, 4vw, 2.4rem); color: var(--dark); margin-bottom: 24px; line-height: 1.2; }
+    p { margin-bottom: 16px; color: var(--text); }
+
+    /* ABOUT */
+    .about-photo { width: 100%; max-height: 600px; object-fit: contain; border-radius: 12px; margin-bottom: 28px; display: block; margin-left: auto; margin-right: auto; }
+
+    /* INGREDIENTS GRID */
+    .ing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin: 24px 0; }
+    .ing-card { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+    .ing-card h4 { font-size: 0.78rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--caramel); font-weight: 700; margin-bottom: 10px; }
+    .ing-card ul { list-style: none; }
+    .ing-card ul li { font-size: 0.9rem; padding: 3px 0; border-bottom: 1px solid #f0e8dc; color: var(--text); }
+    .ing-card ul li:last-child { border-bottom: none; }
+
+    .danger-box { background: #fff5f5; border: 1.5px solid #f5c0c0; border-radius: 10px; padding: 20px 24px; margin: 24px 0; }
+    .danger-box h4 { color: #c0392b; font-size: 0.85rem; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; margin-bottom: 10px; }
+    .danger-box ul { list-style: none; }
+    .danger-box ul li { font-size: 0.9rem; padding: 3px 0; color: #7b2828; }
+    .danger-box ul li::before { content: "✗ "; color: #c0392b; font-weight: 700; }
+    .vet-note { font-size: 0.82rem; color: #c0392b; font-style: italic; margin-top: 10px; }
+
+    /* RECIPE CARDS */
+    .recipe-card { background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 16px rgba(107,66,38,0.08); margin-bottom: 40px; border: 1px solid var(--border); }
+    .recipe-photo { width: 100%; height: 280px; object-fit: cover; display: block; }
+    .recipe-photo-placeholder { width: 100%; height: 280px; background: linear-gradient(135deg, #f5e6d3 0%, #e8c97a 100%); display: flex; align-items: center; justify-content: center; font-size: 4rem; }
+    .recipe-body { padding: 28px; }
+    .recipe-tag { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--caramel); font-weight: 700; margin-bottom: 6px; }
+    .recipe-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--dark); margin-bottom: 4px; }
+    .recipe-subtitle { font-size: 0.9rem; color: var(--accent); font-style: italic; margin-bottom: 20px; }
+    .recipe-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 540px) { .recipe-grid { grid-template-columns: 1fr; } }
+    .recipe-section-title { font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--warm-brown); font-weight: 700; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+    .recipe-body ul { list-style: none; }
+    .recipe-body ul li { font-size: 0.9rem; padding: 4px 0; border-bottom: 1px solid #f5ede3; color: var(--text); }
+    .recipe-body ul li:last-child { border-bottom: none; }
+    .recipe-body ul li::before { content: "• "; color: var(--caramel); }
+    .recipe-steps { margin-top: 0; }
+    .recipe-steps ol { padding-left: 20px; }
+    .recipe-steps ol li { font-size: 0.9rem; padding: 5px 0; color: var(--text); }
+    .recipe-info-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+    .info-pill { background: var(--light-bg); border: 1px solid var(--border); border-radius: 20px; padding: 7px 14px; font-size: 0.8rem; color: var(--warm-brown); }
+    .info-pill strong { color: var(--dark); }
+    .recipe-tip { background: #f9f5ec; border-left: 3px solid var(--soft-gold); border-radius: 0 8px 8px 0; padding: 12px 16px; font-size: 0.88rem; color: var(--text); margin-top: 16px; font-style: italic; }
+
+    /* AMAZON */
+    .amazon-intro { background: #f9f5ec; border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; font-size: 0.88rem; color: var(--text); margin-bottom: 28px; font-style: italic; }
+    .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
+    .product-card { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 22px; display: flex; flex-direction: column; gap: 10px; transition: box-shadow 0.2s, transform 0.2s; }
+    .product-card:hover { box-shadow: 0 4px 20px rgba(107,66,38,0.12); transform: translateY(-2px); }
+    .product-icon { font-size: 2rem; }
+    .product-name { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--dark); line-height: 1.3; }
+    .product-brand { font-size: 0.78rem; color: var(--caramel); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; }
+    .product-link { display: inline-block; margin-top: auto; background: var(--caramel); color: white; text-decoration: none; padding: 9px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; text-align: center; letter-spacing: 0.05em; transition: background 0.2s; }
+    .product-link:hover { background: var(--warm-brown); }
+
+    /* FAQ */
+    .faq-item { border-bottom: 1px solid var(--border); padding: 18px 0; }
+    .faq-q { font-weight: 700; color: var(--dark); margin-bottom: 8px; font-size: 0.95rem; }
+    .faq-q::before { content: "Q. "; color: var(--caramel); }
+    .faq-a { font-size: 0.9rem; color: var(--text); }
+
+    /* LEGAL */
+    .legal-block { background: white; border: 1px solid var(--border); border-radius: 12px; padding: 28px; margin-bottom: 20px; }
+    .legal-block h3 { font-size: 0.8rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--caramel); font-weight: 700; margin-bottom: 12px; font-family: 'Lato', sans-serif; }
+    .legal-block p { font-size: 0.88rem; color: var(--text); margin-bottom: 8px; }
+
+    /* CONTACT */
+    .social-links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+    .social-link { display: inline-flex; align-items: center; gap: 8px; background: white; border: 1.5px solid var(--border); border-radius: 8px; padding: 10px 18px; text-decoration: none; color: var(--warm-brown); font-size: 0.88rem; font-weight: 700; transition: border-color 0.2s, background 0.2s; }
+    .social-link:hover { border-color: var(--caramel); background: #fef5ec; }
+
+    /* FOOTER */
+    footer { background: var(--dark); color: rgba(255,255,255,0.5); text-align: center; padding: 32px 24px; font-size: 0.78rem; line-height: 1.8; }
+    footer strong { color: rgba(255,255,255,0.8); }
+  
+
+    /* POPUP RECETTES GRATUITES */
+    #popup-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6); z-index: 10000;
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    #popup-overlay.active { display: flex; }
+    .popup-box {
+      background: white; border-radius: 20px;
+      max-width: 380px; width: 100%; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: popIn 0.3s ease;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .popup-header {
+      background: linear-gradient(160deg, #2c1a0e, #6b4226, #c8813a);
+      padding: 32px 28px 24px; text-align: center;
+    }
+    .popup-header .paw { font-size: 2.5rem; display: block; margin-bottom: 12px; }
+    .popup-header h3 {
+      font-family: 'Playfair Display', serif; color: white;
+      font-size: 1.4rem; margin-bottom: 8px; line-height: 1.3;
+    }
+    .popup-header h3 em { color: #e8c97a; font-style: italic; }
+    .popup-header p { color: rgba(255,255,255,0.7); font-size: 0.82rem; }
+    .popup-body { padding: 24px 28px; }
+    .popup-body p { font-size: 0.88rem; color: #3d2b1a; margin-bottom: 16px; line-height: 1.6; }
+    .popup-input {
+      width: 100%; padding: 12px 16px; border-radius: 8px;
+      border: 1.5px solid #e8d5c0; font-size: 0.95rem;
+      font-family: 'Lato', sans-serif; margin-bottom: 10px;
+      outline: none; color: #3d2b1a;
+    }
+    .popup-input:focus { border-color: #c8813a; }
+    .popup-rgpd {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 0.78rem; color: #888; margin-bottom: 14px; cursor: pointer;
+    }
+    .popup-rgpd input { margin-top: 2px; accent-color: #c8813a; }
+    .popup-btn {
+      width: 100%; padding: 13px; background: #c8813a; color: white;
+      border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 700;
+      cursor: pointer; font-family: 'Lato', sans-serif; transition: background 0.2s;
+    }
+    .popup-btn:hover { background: #6b4226; }
+    .popup-close {
+      text-align: center; margin-top: 12px;
+      font-size: 0.78rem; color: #bbb; cursor: pointer;
+    }
+    .popup-close:hover { color: #888; }
+    .popup-success {
+      text-align: center; padding: 32px 28px; display: none;
+    }
+    .popup-success .success-icon { font-size: 3rem; margin-bottom: 12px; display: block; }
+    .popup-success h4 {
+      font-family: 'Playfair Display', serif; font-size: 1.2rem;
+      color: #2c1a0e; margin-bottom: 8px;
+    }
+    .popup-success p { font-size: 0.88rem; color: #888; }
+
+    /* MODAL */
+    #modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75); z-index: 9999;
+      align-items: center; justify-content: center; padding: 24px;
+    }
+    #modal-overlay.active { display: flex; }
+    .modal-box {
+      background: linear-gradient(160deg, #2c1a0e, #6b4226);
+      border-radius: 16px; padding: 40px 32px; text-align: center;
+      max-width: 360px; width: 100%;
+    }
+    .modal-box .paw { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+    .modal-box h2 { font-family: 'Playfair Display', serif; color: white; font-size: 1.5rem; margin-bottom: 8px; }
+    .modal-box p { color: rgba(255,255,255,0.7); font-size: 0.88rem; margin-bottom: 20px; }
+    .modal-box input {
+      width: 100%; padding: 12px; border-radius: 8px;
+      border: 2px solid rgba(232,201,122,0.4); background: rgba(255,255,255,0.1);
+      color: white; font-size: 1rem; text-align: center; outline: none;
+      margin-bottom: 12px; font-family: 'Lato', sans-serif;
+    }
+    .modal-box input:focus { border-color: #e8c97a; }
+    .modal-box .modal-btn {
+      width: 100%; padding: 13px; background: #c8813a; color: white;
+      border: none; border-radius: 8px; font-size: 1rem; font-weight: 700;
+      cursor: pointer; font-family: 'Lato', sans-serif;
+    }
+    .modal-error { color: #ff9a8b; font-size: 0.85rem; margin-top: 8px; display: none; }
+    .modal-close { color: rgba(255,255,255,0.5); font-size: 0.8rem; margin-top: 12px; cursor: pointer; display: block; }
+
+    #recettes-section { display: none; }
+    #recettes-section.visible { display: block; border-top: 3px solid #c8813a; margin-top: 40px; }
+
+    .commander-bar { background: #6b4226; text-align: center; padding: 16px 24px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .btn-gold { display: inline-block; background: #e8c97a; color: #2c1a0e; text-decoration: none; padding: 12px 28px; border-radius: 30px; font-size: 1rem; font-weight: 700; cursor: pointer; border: none; font-family: 'Lato', sans-serif; }
+    .btn-white { display: inline-block; background: white; color: #6b4226; padding: 12px 28px; border-radius: 30px; font-size: 1rem; font-weight: 700; cursor: pointer; border: none; font-family: 'Lato', sans-serif; }
+
+    .about-photo { width: 100%; max-height: 600px; object-fit: contain; border-radius: 12px; margin-bottom: 28px; display: block; }
+    .features { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; margin: 24px 0; }
+    .feature { background: white; border: 1px solid #e8d5c0; border-radius: 12px; padding: 20px; text-align: center; }
+    .feature-icon { font-size: 2rem; margin-bottom: 10px; }
+    .feature-title { font-family: 'Playfair Display', serif; font-size: 1rem; color: #2c1a0e; margin-bottom: 6px; }
+    .feature-desc { font-size: 0.82rem; color: #888; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin: 24px 0; }
+    .preview-card { background: white; border: 1px solid #e8d5c0; border-radius: 10px; overflow: hidden; }
+    .preview-card img { width: 100%; height: 100px; object-fit: cover; display: block; }
+    .preview-card-title { font-size: 0.78rem; padding: 8px; color: #2c1a0e; font-weight: 700; text-align: center; }
+    .payment-box { background: white; border: 2px solid #e8d5c0; border-radius: 16px; padding: 36px 32px; text-align: center; max-width: 420px; margin: 40px auto 0; box-shadow: 0 4px 24px rgba(107,66,38,0.1); }
+    .boutique-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; margin-top: 24px; }
+    .boutique-card { background: white; border: 1px solid #e8d5c0; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 16px rgba(107,66,38,0.08); }
+    .boutique-card img { width: 100%; height: 200px; object-fit: cover; display: block; }
+    .boutique-body { padding: 20px; }
+  </style>
+</head>
+<body>
+
+<!-- POPUP RECETTES GRATUITES -->
+<div id="popup-overlay">
+  <div class="popup-box">
+    <div class="popup-header">
+      <span class="paw">🐾</span>
+      <h3>Reçois <em>3 recettes</em><br>gratuites pour ton loulou !</h3>
+      <p>Saines · Naturelles · Approuvées par Mochi</p>
+    </div>
+    <div class="popup-body" id="popup-form">
+      <p>Entre ton email et reçois <strong>3 recettes offertes</strong> directement dans ta boîte mail 🎁</p>
+      <input type="email" id="popup-email" class="popup-input" placeholder="ton@email.com" />
+      <label class="popup-rgpd">
+        <input type="checkbox" id="popup-rgpd" />
+        <span>J'accepte de recevoir des recettes et actualités de <strong>Mochi le Golden Retriever</strong>. <a href="#mentions" style="color:#c8813a;">Politique de confidentialité</a></span>
+      </label>
+      <button class="popup-btn" onclick="submitPopup()">Je reçois mes recettes gratuites 🐾</button>
+      <div id="popup-error" style="color:#c0392b;font-size:0.8rem;margin-top:8px;display:none;">Merci de renseigner ton email et d'accepter les conditions.</div>
+      <div class="popup-close" onclick="closePopup()">Non merci, je préfère passer</div>
+    </div>
+    <div class="popup-success" id="popup-success">
+      <span class="success-icon">🎉</span>
+      <h4>C'est parti !</h4>
+      <p>Vérifie ta boîte mail — tes 3 recettes arrivent dans quelques secondes 🐾</p>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MOT DE PASSE -->
+<div id="modal-overlay">
+  <div class="modal-box">
+    <span class="paw">🐾</span>
+    <h2>Accéder aux recettes</h2>
+    <p>Entrez votre mot de passe pour accéder à vos recettes.</p>
+    <input type="password" id="modal-pw" placeholder="Mot de passe..." onkeydown="if(event.key==='Enter')checkModal()" />
+    <button class="modal-btn" onclick="checkModal()">Accéder 🐾</button>
+    <div class="modal-error" id="modal-error">Mot de passe incorrect 🐾</div>
+    <span class="modal-close" onclick="document.getElementById('modal-overlay').classList.remove('active')">✕ Fermer</span>
+  </div>
+</div>
+
+<!-- HERO -->
+<header class="hero">
+  <span class="hero-paw">🐾</span>
+  <h1>Recettes de <em>Friandises</em><br>pour Chien</h1>
+  <p class="subtitle">Saines · Naturelles · Sans Additifs</p>
+  <p class="author">par mochi.legoldenretriever</p>
+</header>
+
+<!-- BARRE ACTIONS -->
+<div class="commander-bar">
+  <a href="#commander" class="btn-gold">🐾 Commander — 7,00 €</a>
+  <button class="btn-white" onclick="document.getElementById('modal-overlay').classList.add('active')">🔐 Accéder à mes recettes</button>
+  <button class="btn-white" onclick="document.getElementById('popup-overlay').classList.add('active')" style="background:#e8c97a;color:#2c1a0e;">🎁 3 Recettes Offertes</button>
+</div>
+
+<!-- NAV -->
+<nav>
+  <a href="#about">À propos</a>
+  <a href="#boutique">Boutique</a>
+  <a href="#indispensables">Indispensables</a>
+  <a href="#faq">FAQ</a>
+  <a href="#mentions">Mentions légales</a>
+  <a href="#contact">Contact</a>
+</nav>
+
+<!-- À PROPOS -->
+<div class="section-wrap" id="about">
+  <div class="section-label">Notre histoire</div>
+  <h2>Petite mise en bouche</h2>
+  <img src="photo-famille.png" alt="Chris, Helena et Mochi" class="about-photo" onerror="this.style.display='none'" />
+  <p>Nous sommes un jeune couple marié installé à Montpellier. Plutôt que de partir en voyage de noces, nous avons fait un choix différent : <strong>adopter un chien.</strong></p>
+  <p>Mochi, notre golden retriever, fait pleinement partie de notre famille. En voulant le gâter, nous avons réalisé que les friandises du commerce représentaient un certain budget et que leur composition restait souvent floue.</p>
+  <p>Nous avons décidé de préparer nos propres friandises maison. Le résultat a dépassé nos attentes : Mochi en raffole, nous maîtrisons totalement les ingrédients et le coût est bien plus avantageux. 🐾</p>
+</div>
+
+<!-- BOUTIQUE -->
+<div class="section-wrap" id="boutique">
+  <div class="section-label">Nos produits</div>
+  <h2>Boutique 🛍️</h2>
+  <div class="boutique-grid">
+    <div class="boutique-card">
+      <img src="photo-r1.png" onerror="this.style.display='none'" />
+      <div class="boutique-body">
+        <div style="font-size:0.72rem;letter-spacing:0.2em;text-transform:uppercase;color:#c8813a;font-weight:700;margin-bottom:6px;">Ebook Digital</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.2rem;color:#2c1a0e;margin-bottom:8px;">Recettes de Friandises pour Chien</div>
+        <div style="font-size:0.85rem;color:#888;margin-bottom:16px;">12 recettes saisonnières · Saines & naturelles · Sans additifs</div>
+        <div style="font-size:1.8rem;font-weight:700;color:#6b4226;margin-bottom:16px;">7,00 €</div>
+        <a href="#commander" style="display:block;background:#c8813a;color:white;text-decoration:none;padding:12px;border-radius:8px;font-size:0.9rem;font-weight:700;text-align:center;">🛒 Commander</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONTENU -->
+<div class="section-wrap">
+  <div class="section-label">Ce que vous obtenez</div>
+  <h2>Contenu de l'ebook</h2>
+  <div class="features">
+    <div class="feature"><div class="feature-icon">🍂</div><div class="feature-title">Recettes saisonnières</div><div class="feature-desc">Nouvelles recettes ajoutées régulièrement</div></div>
+    <div class="feature"><div class="feature-icon">🥦</div><div class="feature-title">100% naturel</div><div class="feature-desc">Sans additifs, sans sel, sans sucre</div></div>
+    <div class="feature"><div class="feature-icon">🔥</div><div class="feature-title">Airfryer & Four</div><div class="feature-desc">Temps de cuisson détaillés</div></div>
+    <div class="feature"><div class="feature-icon">🧊</div><div class="feature-title">Conservation</div><div class="feature-desc">Conseils frigo et congélateur</div></div>
+    <div class="feature"><div class="feature-icon">⚠️</div><div class="feature-title">Guide sécurité</div><div class="feature-desc">Aliments interdits aux chiens</div></div>
+    <div class="feature"><div class="feature-icon">💡</div><div class="feature-title">Astuces & conseils</div><div class="feature-desc">Tips de préparation</div></div>
+    <div class="feature"><div class="feature-icon">♾️</div><div class="feature-title">Accès à vie</div><div class="feature-desc">Tu paies une fois, tu accèdes à toutes les mises à jour pour toujours</div></div>
+  </div>
+</div>
+
+<!-- APERCU -->
+<div class="section-wrap">
+  <div class="section-label">Aperçu</div>
+  <h2>Les recettes incluses 🐾</h2>
+  <div class="preview-grid">
+    <div class="preview-card"><img src="photo-r1.png" onerror="this.style.display='none'" /><div class="preview-card-title">Cocooning Canin</div></div>
+    <div class="preview-card"><img src="photo-r2.png" onerror="this.style.display='none'" /><div class="preview-card-title">Chien de l'Heure</div></div>
+    <div class="preview-card"><img src="photo-r3.png" onerror="this.style.display='none'" /><div class="preview-card-title">Le Retour du Vert</div></div>
+    <div class="preview-card"><img src="photo-r4.png" onerror="this.style.display='none'" /><div class="preview-card-title">Coup de Boost</div></div>
+    <div class="preview-card"><img src="photo-r5.png" onerror="this.style.display='none'" /><div class="preview-card-title">Green Detox</div></div>
+    <div class="preview-card"><img src="photo-r6.png" onerror="this.style.display='none'" /><div class="preview-card-title">Fraîcheur au Poil</div></div>
+    <div class="preview-card"><img src="photo-r7.png" onerror="this.style.display='none'" /><div class="preview-card-title">Pause Fraîcheur</div></div>
+    <div class="preview-card"><img src="photo-r12.png" onerror="this.style.display='none'" /><div class="preview-card-title">Bouchées Côté Mer</div></div>
+    <div class="preview-card"><img src="photo-r8.png" onerror="this.style.display='none'" /><div class="preview-card-title">Rentrée des Gourmets</div></div>
+    <div class="preview-card"><img src="photo-r9.png" onerror="this.style.display='none'" /><div class="preview-card-title">Tout Doux Automne</div></div>
+    <div class="preview-card"><img src="photo-r10.png" onerror="this.style.display='none'" /><div class="preview-card-title">Thanksgiving</div></div>
+    <div class="preview-card"><img src="photo-r11.png" onerror="this.style.display='none'" /><div class="preview-card-title">Délices de Noël</div></div>
+  </div>
+</div>
+
+<!-- PAIEMENT -->
+<div class="section-wrap" id="commander">
+  <div class="section-label">Commander</div>
+  <h2>Accédez aux recettes 🐾</h2>
+  <div class="payment-box">
+    <span style="font-size:2.5rem;margin-bottom:12px;display:block;">🐾</span>
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.4rem;color:#2c1a0e;margin-bottom:6px;">Recettes de Friandises pour Chien</h3>
+    <p style="font-size:0.85rem;color:#888;font-style:italic;margin-bottom:16px;">Recettes saisonnières · Mises à jour régulières · Accès à vie</p>
+    <div style="background:#fdf3e3;border:1.5px solid #e8c97a;border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:0.88rem;color:#6b4226;line-height:1.7;text-align:center;">
+      ✨ <strong>Un accès à vie pour seulement 7€ 🐾</strong><br>
+      <span style="font-size:0.82rem;color:#9b6b47;">Nouvelles recettes incluses automatiquement — sans rien payer de plus.</span>
+    </div>
+    <div style="font-size:2.5rem;font-weight:700;color:#6b4226;margin-bottom:20px;">7,00 €</div>
+    <div style="text-align:left;margin-bottom:16px;font-size:0.82rem;color:#3d2b1a;">
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+        <input type="checkbox" style="margin-top:3px;accent-color:#c8813a;" />
+        <span>J'accepte de recevoir des communications de <strong>Mochi le Golden Retriever</strong>. <a href="#mentions" style="color:#c8813a;">Politique de confidentialité</a></span>
+      </label>
+    </div>
+    <button id="stripe-btn" onclick="window.open('https://buy.stripe.com/5kQ9ATgDleKq1XzbIffn001','_blank')" style="width:100%;padding:14px;background:#6b4226;color:white;border:none;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;margin-bottom:8px;">💳 Payer par carte — 7,00 €</button>
+    <script>
+      async function payWithStripe() {
+        var btn = document.getElementById('stripe-btn');
+        var optin = document.querySelector('#commander input[type=checkbox]').checked;
+        btn.textContent = 'Chargement...';
+        btn.disabled = true;
+        try {
+          var res = await fetch('/api/create-checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ optin: optin })
+          });
+          var data = await res.json();
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            btn.textContent = '💳 Payer par carte — 7,00 €';
+            btn.disabled = false;
+            alert('Erreur, veuillez réessayer.');
+          }
+        } catch(e) {
+          btn.textContent = '💳 Payer par carte — 7,00 €';
+          btn.disabled = false;
+          alert('Erreur, veuillez réessayer.');
+        }
+      }
+    </script>
+    <p style="font-size:0.75rem;color:#aaa;margin-top:14px;">🔒 Paiement sécurisé · Vous recevrez le mot de passe par email après paiement</p>
+  </div>
+</div>
+
+<!-- RECETTES CACHÉES -->
+<div id="recettes-section">
+  <!-- À PROPOS -->
+<div class="section-wrap" id="about">
+  <div class="section-label">Notre histoire</div>
+  <h2>Petite mise en bouche</h2>
+  <img src="photo-famille.png" alt="Helena, Chris et Mochi" class="about-photo" onerror="this.style.display='none'" />
+  <p>Nous sommes un jeune couple marié installé à Montpellier. Plutôt que de partir en voyage de noces, nous avons fait un choix différent : <strong>adopter un chien.</strong></p>
+  <p>Mochi, notre golden retriever, fait pleinement partie de notre famille. En voulant le gâter, nous avons réalisé que les friandises du commerce représentaient un certain budget et que leur composition restait souvent floue.</p>
+  <p>Nous avons décidé de préparer nos propres friandises maison. Le résultat a dépassé nos attentes : Mochi en raffole, nous maîtrisons totalement les ingrédients et le coût est bien plus avantageux. 🐾</p>
+</div>
+
+<!-- À SAVOIR -->
+<div class="section-wrap" id="asavoir">
+  <div class="section-label">Informations essentielles</div>
+  <h2>À Savoir</h2>
+  <div class="ing-grid">
+    <div class="ing-card">
+      <h4>🥩 Protéines animales</h4>
+      <ul><li>Poulet, Dinde</li><li>Bœuf maigre, Veau</li><li>Saumon, Cabillaud</li><li>Sardines, Agneau</li></ul>
+    </div>
+    <div class="ing-card">
+      <h4>🌾 Féculents</h4>
+      <ul><li>Riz blanc, Pâtes</li><li>Pommes de terre</li><li>Flocons d'avoine</li><li>Quinoa (bien cuits)</li></ul>
+    </div>
+    <div class="ing-card">
+      <h4>🥦 Légumes</h4>
+      <ul><li>Haricots verts</li><li>Courgette, Concombre</li><li>Épinards, Brocolis</li><li>Carotte, Potiron</li></ul>
+    </div>
+    <div class="ing-card">
+      <h4>🍎 Fruits</h4>
+      <ul><li>Pomme, Poire</li><li>Pastèque, Melon</li><li>Myrtille, Fraise</li><li>Banane, Mangue</li></ul>
+    </div>
+    <div class="ing-card">
+      <h4>🧀 Produits laitiers</h4>
+      <ul><li>Emmental, Comté</li><li>Fromage blanc</li><li>Yaourt nature</li></ul>
+    </div>
+    <div class="ing-card">
+      <h4>🫙 Huiles &amp; graines</h4>
+      <ul><li>Huile de saumon</li><li>Huile de colza</li><li>Huile de coco</li><li>Graines de chia</li></ul>
+    </div>
+  </div>
+  <div class="danger-box">
+    <h4>⚠️ Ne jamais donner à votre chien</h4>
+    <ul>
+      <li>Raisins &amp; raisins secs (toxiques pour les reins)</li>
+      <li>Noix de macadamia (toxiques, effets neurologiques)</li>
+      <li>Avocat (contient de la perséine, toxique)</li>
+      <li>Os cuits (peuvent se fragmenter et perforer l'intestin)</li>
+      <li>Oignon, ail, échalote (détruisent les globules rouges)</li>
+      <li>Chocolat noir / cacao (contient de la théobromine, toxique)</li>
+      <li>Alcool, Café, Thé, Soda</li>
+      <li>Xylitol (présent dans chewing-gums, bonbons — très dangereux)</li>
+    </ul>
+    <p class="vet-note">⚠️ En cas d'ingestion accidentelle, contactez immédiatement un vétérinaire.</p>
+  </div>
+</div>
+
+<!-- RECETTES -->
+<div class="section-wrap" id="recettes">
+  <div class="section-label">12 recettes saisonnières</div>
+  <h2>Les Recettes 🐾</h2>
+
+  <!-- R1 -->
+  <div class="recipe-card">
+    <img src="photo-r1.png" alt="Cocooning Canin" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>🐾</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Hiver · Bouchées</div>
+      <div class="recipe-title">Cocooning Canin</div>
+      <div class="recipe-subtitle">Carotte, patate douce &amp; sardine</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 20 à 30 friandises)</div>
+          <ul><li>1 œuf</li><li>120 g de patate douce crue</li><li>60 g de carotte crue</li><li>1 boîte de sardines au naturel (égouttées)</li><li>50 g de farine de riz (ou sarrasin)</li><li>½ c. à café d'huile de saumon (optionnelle)</li></ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Cuire patate douce 12–15 min et carotte 10–12 min à la vapeur</li><li>Écraser ou mixer les légumes cuits</li><li>Écraser les sardines à la fourchette</li><li>Mélanger légumes, sardines et œuf</li><li>Ajouter la farine progressivement</li><li>Ajouter l'huile de saumon si utilisée</li><li>Déposer dans des moules ou sur une plaque</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🔥 Airfryer : <strong>160°C — 12 min</strong></div>
+        <div class="info-pill">🔥 Four : <strong>180°C — 20 à 25 min</strong></div>
+        <div class="info-pill">🧊 Frigo : <strong>4 à 5 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>2 mois</strong></div>
+      </div>
+      <div class="recipe-tip">💡 Couper en cubes de la taille d'une pièce de 1€. Toujours laisser refroidir avant de donner.</div>
+    </div>
+  </div>
+
+  <!-- R2 -->
+  <div class="recipe-card">
+    <img src="photo-r2.png" alt="Mini crêpes" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>🥞</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Toute saison · Mini crêpes</div>
+      <div class="recipe-title">Chien de l'Heure</div>
+      <div class="recipe-subtitle">Mini crêpes nature ou garnies</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 15 à 20 mini crêpes)</div>
+          <ul><li>80 g de farine de riz (ou sarrasin)</li><li>1 œuf</li><li>120 ml d'eau</li><li>½ c. à café d'huile de saumon (optionnelle)</li></ul>
+          <div class="recipe-section-title" style="margin-top:16px;">Garnitures possibles</div>
+          <ul><li>Rillettes de poulet &amp; patate douce</li><li>Rillettes de thon &amp; courgette</li><li>Compote de pomme sans sucre</li></ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Mélanger farine, œuf et eau jusqu'à pâte lisse</li><li>Ajouter l'huile de saumon si utilisée</li><li>Laisser reposer 5 minutes</li><li>Cuire à la poêle antiadhésive à feu doux, 1 à 2 min par face</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🧊 Crêpes frigo : <strong>2 à 3 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>1 mois</strong></div>
+        <div class="info-pill">🧊 Garnitures salées : <strong>24 à 48h max</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R3 -->
+  <div class="recipe-card">
+    <img src="photo-r3.png" alt="Le Retour du Vert" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>🌱</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Printemps · Cubes légers</div>
+      <div class="recipe-title">Le Retour du Vert 🌱</div>
+      <div class="recipe-subtitle">Courgette &amp; haricots verts</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 20 à 30 petits cubes)</div>
+          <ul><li>120 g de courgette crue</li><li>80 g de haricots verts crus</li><li>2 œufs</li><li>30 ml d'eau</li></ul>
+          <p style="font-size:0.8rem;color:var(--green);margin-top:8px;font-weight:700;">Sans farine · Sans matière grasse · Sans sel</p>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Cuire courgette 8–10 min et haricots verts 10–12 min à la vapeur</li><li>Égoutter soigneusement</li><li>Mixer finement les légumes</li><li>Ajouter eau et œufs, mixer de nouveau</li><li>Verser dans des moules en silicone</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🔥 Airfryer : <strong>160°C — 12 à 15 min</strong></div>
+        <div class="info-pill">🔥 Four : <strong>170°C — 20 à 25 min</strong></div>
+        <div class="info-pill">🧊 Frigo : <strong>2 à 3 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>1 à 2 mois</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R4 -->
+  <div class="recipe-card">
+    <img src="photo-r4.png" alt="Coup de Boost" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>🌼</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Printemps · Barres</div>
+      <div class="recipe-title">Coup de Boost du Printemps 🌼</div>
+      <div class="recipe-subtitle">Barres protéinées, énergie sur pattes</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 10 à 12 barres)</div>
+          <ul><li>120 g de pois chiches cuits, rincés (sans sel)</li><li>1 banane bien mûre</li><li>1 œuf</li><li>30 g de farine de riz</li><li>1 à 2 c. à soupe d'eau si besoin</li></ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Égoutter et rincer les pois chiches</li><li>Écraser la banane</li><li>Mixer les pois chiches en purée</li><li>Mélanger banane, pois chiches et œuf</li><li>Ajouter la farine, ajuster avec l'eau</li><li>Étaler dans un moule rectangulaire (≈ 1 cm)</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🔥 Airfryer : <strong>160°C — 15 à 18 min</strong></div>
+        <div class="info-pill">🔥 Four : <strong>170°C — 25 à 30 min</strong></div>
+        <div class="info-pill">🧊 Frigo : <strong>3 à 4 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>2 mois</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R5 -->
+  <div class="recipe-card">
+    <img src="photo-r5.png" alt="Green Detox" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>💚</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Toute saison · Crackers</div>
+      <div class="recipe-title">Green Detox 💚</div>
+      <div class="recipe-subtitle">Crackers spiruline &amp; sardine</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients</div>
+          <ul><li>1 œuf</li><li>80 g de sardines au naturel (sans sel)</li><li>120 g de farine de pois chiches (ou de riz)</li><li>½ c. à café de spiruline en poudre</li><li>Un peu d'eau si nécessaire</li></ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Mixer tous les ingrédients en pâte homogène</li><li>Étaler finement (≈ 3 mm) entre deux feuilles de papier cuisson</li><li>Découper en petits carrés ou formes au choix</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🔥 Airfryer : <strong>150°C — 10 à 12 min</strong></div>
+        <div class="info-pill">🔥 Four : <strong>160°C — 18 à 20 min</strong></div>
+        <div class="info-pill">🧊 Frigo : <strong>jusqu'à 10 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>2 mois</strong></div>
+      </div>
+      <div class="recipe-tip">💡 Idéal pour la vitalité, la peau et le pelage. Sécher 5 min dans le four éteint pour plus de croustillant.</div>
+    </div>
+  </div>
+
+  <!-- R6 -->
+  <div class="recipe-card">
+    <img src="photo-r6.png" alt="Fraîcheur au Poil" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>💧</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Été · Palets frais</div>
+      <div class="recipe-title">Fraîcheur au Poil 💧</div>
+      <div class="recipe-subtitle">Concombre &amp; poisson blanc</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 20 petits palets)</div>
+          <ul><li>120 g de concombre cru, épluché et épépiné</li><li>100 g de poisson blanc cuit (cabillaud, colin, sans sel)</li><li>1 œuf</li><li>40 g de farine de riz</li><li>1 c. à soupe de yaourt nature sans lactose</li></ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Râper finement le concombre</li><li>Presser fortement pour retirer l'eau</li><li>Écraser le poisson cuit</li><li>Mélanger concombre, poisson et œuf</li><li>Ajouter le yaourt puis la farine</li><li>Former des petits palets ou remplir des moules</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🔥 Airfryer : <strong>160°C — 12 à 15 min</strong></div>
+        <div class="info-pill">🔥 Four : <strong>170°C — 20 à 25 min</strong></div>
+        <div class="info-pill">🧊 Frigo : <strong>2 à 3 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>1 à 2 mois</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R7 -->
+  <div class="recipe-card">
+    <img src="photo-r7.png" alt="Pause Fraîcheur" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>😎</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Été · Bouchées glacées</div>
+      <div class="recipe-title">Pause Fraîcheur Canine 😎</div>
+      <div class="recipe-subtitle">Pastèque &amp; myrtilles glacées</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 15 à 20 bouchées glacées)</div>
+          <ul><li>150 g de pastèque (sans pépins, sans écorce)</li><li>40 g de myrtilles (fraîches ou surgelées)</li><li>60 ml d'eau de coco nature ou d'eau plate</li></ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Couper la pastèque et retirer tous les pépins</li><li>Mixer pastèque et myrtilles en purée lisse</li><li>Ajouter l'eau de coco ou l'eau plate, mixer</li><li>Verser dans des moules en silicone</li><li>Congeler minimum 4 heures</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🧊 Congélateur : <strong>jusqu'à 1 mois</strong></div>
+      </div>
+      <div class="recipe-tip">💡 Idéal après une promenade ou lors de fortes chaleurs. À donner occasionnellement — surveiller pendant la dégustation.</div>
+    </div>
+  </div>
+
+
+  <!-- R12 -->
+  <div class="recipe-card">
+    <img src="photo-r12.png" alt="Bouchées Fraîcheur Côté Mer" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>🌊</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Été · Bouchées fraîches</div>
+      <div class="recipe-title">Bouchées Fraîcheur Côté Mer 🌊</div>
+      <div class="recipe-subtitle">Thon &amp; concombre glacé</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 20 bouchées)</div>
+          <ul>
+            <li>1 boîte de thon au naturel (sans sel)</li>
+            <li>100 g de concombre épluché et épépiné</li>
+            <li>1 œuf</li>
+            <li>40 g de farine de riz</li>
+            <li>1 c. à soupe de yaourt nature sans lactose</li>
+          </ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol>
+            <li>Égoutter le thon</li>
+            <li>Râper le concombre et bien presser pour enlever l'eau</li>
+            <li>Mélanger thon, concombre, œuf et yaourt</li>
+            <li>Ajouter la farine progressivement</li>
+            <li>Former des petites bouchées ou remplir des moules</li>
+          </ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🔥 Airfryer : <strong>160°C — 12 min</strong></div>
+        <div class="info-pill">🔥 Four : <strong>170°C — 20 min</strong></div>
+        <div class="info-pill">🧊 Frigo : <strong>2 à 3 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>1 à 2 mois</strong></div>
+      </div>
+      <div class="recipe-tip">💡 Idéal pour les journées chaudes d'été — légère et riche en protéines !</div>
+    </div>
+  </div>
+
+  <!-- R8 -->
+  <div class="recipe-card">
+    <img src="photo-r8.png" alt="La Rentrée des Gourmets" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>🎒</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Automne · Biscuits doux</div>
+      <div class="recipe-title">La Rentrée des Gourmets 🎒</div>
+      <div class="recipe-subtitle">Biscuits carotte &amp; compote de pomme</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 20 à 25 petits biscuits)</div>
+          <ul><li>100 g de carotte crue, épluchée</li><li>80 g de compote de pomme sans sucre ajouté</li><li>120 g de farine de sarrasin (ou de riz)</li><li>1 œuf</li><li>1 c. à café d'huile de saumon</li><li>20 à 40 ml d'eau selon la texture</li></ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Cuire la carotte à la vapeur 10 à 12 minutes</li><li>Mixer ou écraser finement</li><li>Mélanger carotte, compote, œuf et huile</li><li>Ajouter la farine, incorporer l'eau progressivement</li><li>Former des petites bouchées ou découper des formes</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🔥 Airfryer : <strong>170°C — 10 à 14 min</strong></div>
+        <div class="info-pill">🔥 Four : <strong>180°C — 18 à 22 min</strong></div>
+        <div class="info-pill">🧊 Frigo : <strong>jusqu'à 10 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>2 mois</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R9 -->
+  <div class="recipe-card">
+    <img src="photo-r9.png" alt="Tout Doux comme l'Automne" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>🍂</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Automne · Biscuits réconfort</div>
+      <div class="recipe-title">Tout Doux comme l'Automne 🍂</div>
+      <div class="recipe-subtitle">Biscuits au potiron</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 20 à 25 petits biscuits)</div>
+          <ul><li>150 g de potiron ou courge butternut</li><li>100 g de farine d'avoine sans gluten (ou de riz)</li><li>1 œuf</li><li>1 c. à café d'huile de saumon (ou d'olive)</li><li>20 à 40 ml d'eau selon la texture</li></ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Cuire le potiron à la vapeur 12 à 15 minutes</li><li>Égoutter, écraser ou mixer, laisser refroidir</li><li>Mélanger potiron, œuf et huile</li><li>Ajouter la farine, incorporer l'eau progressivement</li><li>Former des biscuits ou découper des formes</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🔥 Airfryer : <strong>170°C — 12 à 15 min</strong></div>
+        <div class="info-pill">🔥 Four : <strong>180°C — 20 à 25 min</strong></div>
+        <div class="info-pill">🧊 Frigo : <strong>5 à 7 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>2 mois</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R10 -->
+  <div class="recipe-card">
+    <img src="photo-r10.png" alt="Thanksgiving Version Truffe" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>🦃</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Automne · Palets festifs</div>
+      <div class="recipe-title">Thanksgiving Version Truffe 🦃</div>
+      <div class="recipe-subtitle">Patate douce &amp; blanc de dinde</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 20 petits palets)</div>
+          <ul><li>180 g de patate douce crue, épluchée</li><li>100 g de blanc de dinde cuit, sans sel</li><li>1 œuf</li><li>60 g de farine de riz (ou sarrasin)</li><li>1 c. à café d'huile de saumon</li><li>20 à 40 ml d'eau selon la texture</li></ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Cuire la patate douce à la vapeur 12 à 15 minutes</li><li>Égoutter, écraser ou mixer, laisser refroidir</li><li>Mélanger patate douce, dinde, œuf et huile</li><li>Ajouter la farine, incorporer l'eau progressivement</li><li>Former des petits palets ou garnir des moules</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🔥 Airfryer : <strong>170°C — 12 à 15 min</strong></div>
+        <div class="info-pill">🔥 Four : <strong>180°C — 20 à 25 min</strong></div>
+        <div class="info-pill">🧊 Frigo : <strong>5 à 7 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>2 mois</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R11 -->
+  <div class="recipe-card">
+    <img src="photo-r11.png" alt="Les Délices de Noël" class="recipe-photo" onerror="this.outerHTML='<div class=&quot;recipe-photo-placeholder&quot;>🎄</div>'" />
+    <div class="recipe-body">
+      <div class="recipe-tag">Hiver · Biscuits festifs</div>
+      <div class="recipe-title">Les Délices de Noël 🎄</div>
+      <div class="recipe-subtitle">Friandises festives au saumon</div>
+      <div class="recipe-grid">
+        <div>
+          <div class="recipe-section-title">Ingrédients (≈ 20 à 25 petits biscuits)</div>
+          <ul><li>120 g de saumon frais ou cuit, sans sel ni arêtes</li><li>150 g de patate douce crue, épluchée</li><li>80 g de farine de riz (ou sarrasin)</li><li>1 œuf</li><li>1 c. à café d'huile de saumon</li><li>20 à 40 ml d'eau selon la texture</li></ul>
+        </div>
+        <div>
+          <div class="recipe-section-title">Préparation</div>
+          <div class="recipe-steps"><ol><li>Cuire le saumon à la vapeur 8 à 10 min, sans assaisonnement</li><li>Vérifier qu'il ne reste aucune arête, émietter</li><li>Cuire la patate douce à la vapeur 12 à 15 minutes</li><li>Égoutter, écraser ou mixer, laisser refroidir</li><li>Mélanger tous les ingrédients, incorporer l'eau progressivement</li><li>Étaler et découper des formes de Noël</li></ol></div>
+        </div>
+      </div>
+      <div class="recipe-info-row">
+        <div class="info-pill">🔥 Airfryer : <strong>170°C — 12 à 15 min</strong></div>
+        <div class="info-pill">🔥 Four : <strong>180°C — 20 à 25 min</strong></div>
+        <div class="info-pill">🧊 Frigo : <strong>3 à 4 jours</strong></div>
+        <div class="info-pill">🧊 Congélateur : <strong>2 mois</strong></div>
+      </div>
+      <div class="recipe-tip">💡 Idéal pour les chiens à peau sensible ou pelage terne grâce aux oméga-3 du saumon.</div>
+    </div>
+  </div>
+
+</div><!-- end recettes -->
+
+<!-- INDISPENSABLES -->
+<div class="section-wrap" id="indispensables">
+  <div class="section-label">Nos coups de cœur</div>
+  <h2>Les Indispensables de Mochi 🐾</h2>
+  <div class="amazon-intro">
+    Ces produits sont ceux qu'on utilise au quotidien avec Mochi. Les liens sont des liens affiliés Amazon — cela ne change pas le prix pour vous, mais nous permet de soutenir notre contenu. Merci pour votre confiance ! 🐾
+  </div>
+  <div class="products-grid">
+    <div class="product-card">
+      <div class="product-icon">🧸</div>
+      <div class="product-brand">Dufuso</div>
+      <div class="product-name">Jouet Occupation — Jeu Intelligence Indestructible Niveau 2 (Intermédiaire)</div>
+      <a href="https://amzn.to/42qlpbf" target="_blank" rel="noopener" class="product-link">Voir sur Amazon →</a>
+    </div>
+    <div class="product-card">
+      <div class="product-icon">🐟</div>
+      <div class="product-brand">Complément naturel</div>
+      <div class="product-name">Huile de Saumon pour Chien</div>
+      <a href="https://amzn.to/4vP9GR6" target="_blank" rel="noopener" class="product-link">Voir sur Amazon →</a>
+    </div>
+    <div class="product-card">
+      <div class="product-icon">🪮</div>
+      <div class="product-brand">BluePet</div>
+      <div class="product-name">Brosse Démêlante Professionnelle — Poil Long, Râteau de Toilettage</div>
+      <a href="https://amzn.to/4u11LhJ" target="_blank" rel="noopener" class="product-link">Voir sur Amazon →</a>
+    </div>
+    <div class="product-card">
+      <div class="product-icon">🔍</div>
+      <div class="product-brand">Stimulation mentale</div>
+      <div class="product-name">Tapis de Fouille pour Chien</div>
+      <a href="https://amzn.to/3OIHmz8" target="_blank" rel="noopener" class="product-link">Voir sur Amazon →</a>
+    </div>
+    <div class="product-card">
+      <div class="product-icon">🌀</div>
+      <div class="product-brand">oneisall</div>
+      <div class="product-name">Aspirateur Poil de Chien — 15 000 Pa, 6 outils de Toilettage, 2L Silencieux</div>
+      <a href="https://amzn.to/490dntd" target="_blank" rel="noopener" class="product-link">Voir sur Amazon →</a>
+    </div>
+  </div>
+</div>
+
+<!-- FAQ -->
+<div class="section-wrap" id="faq">
+  <div class="section-label">Questions fréquentes</div>
+  <h2>FAQ</h2>
+  <div class="faq-item">
+    <div class="faq-q">Ces friandises conviennent-elles à tous les chiens ?</div>
+    <div class="faq-a">Oui, pour la majorité des chiens adultes en bonne santé. En cas de pathologie, d'allergie ou pour les chiots, demandez l'avis d'un vétérinaire avant toute introduction.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">À partir de quel âge puis-je en donner ?</div>
+    <div class="faq-a">À partir de 3–4 mois, lorsque le chiot mange déjà des aliments solides, en très petites quantités et en surveillant la tolérance digestive.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Combien de friandises par jour ?</div>
+    <div class="faq-a">Les friandises doivent représenter 5 à 10 % maximum de l'apport alimentaire quotidien, selon la taille et l'activité du chien. Elles ne remplacent pas un repas complet.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Combien de temps se conservent-elles ?</div>
+    <div class="faq-a">Friandises sèches (crackers, biscuits) : jusqu'à 10 jours au réfrigérateur. Friandises moelleuses : 3 à 5 jours au réfrigérateur. Congélation : jusqu'à 2 mois pour la plupart des recettes.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Puis-je remplacer certains ingrédients ?</div>
+    <div class="faq-a">Oui, avec des alternatives adaptées aux chiens. Vérifiez la compatibilité avec les éventuelles allergies de votre animal et consultez un vétérinaire en cas de doute.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q">Mon chien est en surpoids ou allergique ?</div>
+    <div class="faq-a">Privilégiez des recettes simples et pauvres en matières grasses comme "Le Retour du Vert", et adaptez les quantités à sa situation. Consultez un vétérinaire ou un nutritionniste vétérinaire pour un suivi personnalisé.</div>
+  </div>
+</div>
+
+<!-- MENTIONS LÉGALES -->
+<div class="section-wrap" id="mentions">
+  <div class="section-label">Informations légales</div>
+  <h2>Mentions Légales</h2>
+
+  <div class="legal-block">
+    <h3>Éditeur du site</h3>
+    <p><strong>Nom :</strong> Helena CANOUSSAMY POULLE</p>
+    <p><strong>Statut :</strong> Micro-entrepreneur</p>
+    <p><strong>SIRET :</strong> 88785110300069</p>
+    <p><strong>Adresse :</strong> Montpellier, France</p>
+    <p><strong>Email :</strong> <a href="mailto:mochi.legoldenretriever@gmail.com" style="color:var(--caramel);">mochi.legoldenretriever@gmail.com</a></p>
+  </div>
+
+  <div class="legal-block">
+    <h3>Hébergement</h3>
+    <p><strong>Hébergeur :</strong> Netlify, Inc.</p>
+    <p><strong>Adresse :</strong> 512 Second Street, Suite 200, San Francisco, CA 94107, États-Unis</p>
+    <p><strong>Site :</strong> <a href="https://www.cloudflare.com" target="_blank" rel="noopener" style="color:var(--caramel);">www.cloudflare.com</a></p>
+  </div>
+
+  <div class="legal-block">
+    <h3>Propriété intellectuelle</h3>
+    <p>L'ensemble du contenu de ce site (textes, recettes, photos, mise en page) est protégé par le droit d'auteur. Toute reproduction, partage ou revente, même partielle, est strictement interdite sans autorisation écrite préalable de l'éditeur.</p>
+  </div>
+
+  <div class="legal-block">
+    <h3>Responsabilité</h3>
+    <p>Les recettes présentées sur ce site sont fournies à titre informatif et ont été élaborées avec soin. Elles ne remplacent en aucun cas l'avis d'un vétérinaire. Helena CANOUSSAMY POULLE ne saurait être tenue responsable en cas de réaction adverse chez votre animal. En cas de doute, consultez un professionnel de santé vétérinaire.</p>
+  </div>
+
+  <div class="legal-block">
+    <h3>Liens affiliés Amazon</h3>
+    <p>Ce site participe au Programme Partenaires d'Amazon EU, un programme d'affiliation conçu pour permettre à des sites de percevoir une rémunération grâce à la création de liens vers Amazon.fr. Le prix des produits n'est pas affecté pour l'acheteur.</p>
+  </div>
+
+  <div class="legal-block">
+    <h3>Données personnelles</h3>
+    <p>Ce site ne collecte aucune donnée personnelle. Aucun cookie de traçage n'est utilisé. Le site est protégé par un mot de passe à usage privé.</p>
+  </div>
+</div>
+
+<!-- CONTACT -->
+<div class="section-wrap" id="contact">
+  <div class="section-label">Nous retrouver</div>
+  <h2>Nous contacter 🐾</h2>
+  <p>Rejoignez-nous sur nos réseaux sociaux pour suivre les aventures de Mochi au quotidien !</p>
+  <div class="social-links">
+    <a href="https://www.instagram.com/mochi.legoldenretriever" target="_blank" rel="noopener" class="social-link">📸 Instagram</a>
+    <a href="https://www.facebook.com/MochiLegoldenretriever" target="_blank" rel="noopener" class="social-link">📘 Facebook</a>
+    <a href="https://www.tiktok.com/@mochi.legoldenretriever" target="_blank" rel="noopener" class="social-link">🎵 TikTok</a>
+    <a href="mailto:mochi.legoldenretriever@gmail.com" class="social-link">✉️ Email</a>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <p><strong>© 2025 Helena CANOUSSAMY POULLE</strong> · Micro-entrepreneur · SIRET 88785110300069 · Montpellier</p>
+  <p style="margin-top:6px;">Contenu protégé — Reproduction, partage ou revente interdits</p>
+  <p style="margin-top:4px;">Les recettes sont fournies à titre informatif. Consultez un vétérinaire en cas de doute.</p>
+</footer>
+
+</div><!-- end main-content -->
+</div>
+
+<!-- INDISPENSABLES -->
+<div class="section-wrap" id="indispensables">
+  <div class="section-label">Nos coups de cœur</div>
+  <h2>Les Indispensables de Mochi 🐾</h2>
+  <div style="background:#f9f5ec;border:1px solid #e8d5c0;border-radius:10px;padding:18px 22px;font-size:0.88rem;margin-bottom:28px;font-style:italic;">Ces produits sont ceux qu'on utilise au quotidien avec Mochi. Les liens sont affiliés — cela ne change pas le prix pour vous. Merci ! 🐾</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px;">
+    <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:10px;"><div style="font-size:2rem;">🛡️</div><div style="font-size:0.78rem;color:#c8813a;text-transform:uppercase;font-weight:700;">Lassie</div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:#2c1a0e;">Assurance Chien — Parrainage</div><div style="font-size:0.78rem;color:#5a7a4a;font-weight:700;background:#f0f7ed;padding:4px 10px;border-radius:20px;text-align:center;">Code : 9GA8E6</div><a href="https://click-myl.ink/mvnecvdh" target="_blank" rel="noopener" style="display:block;background:#c8813a;color:white;text-decoration:none;padding:9px 16px;border-radius:8px;font-size:0.82rem;font-weight:700;text-align:center;margin-top:auto;">Découvrir →</a></div>
+    <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:10px;"><div style="font-size:2rem;">🧸</div><div style="font-size:0.78rem;color:#c8813a;text-transform:uppercase;font-weight:700;">Dufuso</div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:#2c1a0e;">Jouet Occupation — Niveau 2</div><a href="https://amzn.to/42qlpbf" target="_blank" rel="noopener" style="display:block;background:#c8813a;color:white;text-decoration:none;padding:9px 16px;border-radius:8px;font-size:0.82rem;font-weight:700;text-align:center;margin-top:auto;">Voir sur Amazon →</a></div>
+    <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:10px;"><div style="font-size:2rem;">🐟</div><div style="font-size:0.78rem;color:#c8813a;text-transform:uppercase;font-weight:700;">Complément</div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:#2c1a0e;">Huile de Saumon pour Chien</div><a href="https://amzn.to/4vP9GR6" target="_blank" rel="noopener" style="display:block;background:#c8813a;color:white;text-decoration:none;padding:9px 16px;border-radius:8px;font-size:0.82rem;font-weight:700;text-align:center;margin-top:auto;">Voir sur Amazon →</a></div>
+    <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:10px;"><div style="font-size:2rem;">🪮</div><div style="font-size:0.78rem;color:#c8813a;text-transform:uppercase;font-weight:700;">BluePet</div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:#2c1a0e;">Brosse Démêlante — Poil Long</div><a href="https://amzn.to/4u11LhJ" target="_blank" rel="noopener" style="display:block;background:#c8813a;color:white;text-decoration:none;padding:9px 16px;border-radius:8px;font-size:0.82rem;font-weight:700;text-align:center;margin-top:auto;">Voir sur Amazon →</a></div>
+    <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:10px;"><div style="font-size:2rem;">🔍</div><div style="font-size:0.78rem;color:#c8813a;text-transform:uppercase;font-weight:700;">Stimulation</div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:#2c1a0e;">Tapis de Fouille pour Chien</div><a href="https://amzn.to/3OIHmz8" target="_blank" rel="noopener" style="display:block;background:#c8813a;color:white;text-decoration:none;padding:9px 16px;border-radius:8px;font-size:0.82rem;font-weight:700;text-align:center;margin-top:auto;">Voir sur Amazon →</a></div>
+    <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:22px;display:flex;flex-direction:column;gap:10px;"><div style="font-size:2rem;">🌀</div><div style="font-size:0.78rem;color:#c8813a;text-transform:uppercase;font-weight:700;">oneisall</div><div style="font-family:'Playfair Display',serif;font-size:1rem;color:#2c1a0e;">Aspirateur Poil — 15 000 Pa, 2L</div><a href="https://amzn.to/490dntd" target="_blank" rel="noopener" style="display:block;background:#c8813a;color:white;text-decoration:none;padding:9px 16px;border-radius:8px;font-size:0.82rem;font-weight:700;text-align:center;margin-top:auto;">Voir sur Amazon →</a></div>
+  </div>
+</div>
+
+<!-- FAQ -->
+<div class="section-wrap" id="faq">
+  <div class="section-label">Questions fréquentes</div>
+  <h2>FAQ</h2>
+  <div style="border-bottom:1px solid #e8d5c0;padding:18px 0;"><div style="font-weight:700;color:#2c1a0e;margin-bottom:8px;"><span style="color:#c8813a;">Q. </span>Ces friandises conviennent-elles à tous les chiens ?</div><div style="font-size:0.9rem;">Oui, pour la majorité des chiens adultes en bonne santé. En cas de pathologie ou allergie, demandez l'avis d'un vétérinaire.</div></div>
+  <div style="border-bottom:1px solid #e8d5c0;padding:18px 0;"><div style="font-weight:700;color:#2c1a0e;margin-bottom:8px;"><span style="color:#c8813a;">Q. </span>Combien de friandises par jour ?</div><div style="font-size:0.9rem;">5 à 10% maximum de l'apport alimentaire quotidien. Elles ne remplacent pas un repas complet.</div></div>
+  <div style="border-bottom:1px solid #e8d5c0;padding:18px 0;"><div style="font-weight:700;color:#2c1a0e;margin-bottom:8px;"><span style="color:#c8813a;">Q. </span>Combien de temps se conservent-elles ?</div><div style="font-size:0.9rem;">Biscuits secs : jusqu'à 10 jours au frigo. Friandises moelleuses : 3 à 5 jours. Congélation : 2 mois.</div></div>
+  <div style="padding:18px 0;"><div style="font-weight:700;color:#2c1a0e;margin-bottom:8px;"><span style="color:#c8813a;">Q. </span>Mon chien est en surpoids ou allergique ?</div><div style="font-size:0.9rem;">Consultez un vétérinaire et privilégiez les recettes légères comme "Le Retour du Vert".</div></div>
+</div>
+
+<!-- MENTIONS -->
+<div class="section-wrap" id="mentions">
+  <div class="section-label">Informations légales</div>
+  <h2>Mentions Légales</h2>
+  <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:28px;margin-bottom:20px;"><h3 style="font-size:0.8rem;letter-spacing:0.18em;text-transform:uppercase;color:#c8813a;font-weight:700;margin-bottom:12px;">Éditeur du site</h3><p style="font-size:0.88rem;margin-bottom:6px;"><strong>Nom :</strong> Helena CANOUSSAMY POULLE</p><p style="font-size:0.88rem;margin-bottom:6px;"><strong>Statut :</strong> Micro-entrepreneur · SIRET : 88785110300069</p><p style="font-size:0.88rem;margin-bottom:6px;"><strong>Adresse :</strong> Montpellier, France</p><p style="font-size:0.88rem;"><strong>Email :</strong> <a href="mailto:mochi.legoldenretriever@gmail.com" style="color:#c8813a;">mochi.legoldenretriever@gmail.com</a></p></div>
+  <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:28px;margin-bottom:20px;"><h3 style="font-size:0.8rem;letter-spacing:0.18em;text-transform:uppercase;color:#c8813a;font-weight:700;margin-bottom:12px;">Hébergement</h3><p style="font-size:0.88rem;">Cloudflare, Inc. — 101 Townsend St, San Francisco, CA 94107, États-Unis</p></div>
+  <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:28px;margin-bottom:20px;"><h3 style="font-size:0.8rem;letter-spacing:0.18em;text-transform:uppercase;color:#c8813a;font-weight:700;margin-bottom:12px;">Propriété intellectuelle</h3><p style="font-size:0.88rem;">Tout le contenu est protégé par le droit d'auteur. Toute reproduction est interdite sans autorisation.</p></div>
+  <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:28px;margin-bottom:20px;"><h3 style="font-size:0.8rem;letter-spacing:0.18em;text-transform:uppercase;color:#c8813a;font-weight:700;margin-bottom:12px;">Liens affiliés</h3><p style="font-size:0.88rem;">Ce site contient des liens affiliés Amazon et Lassie. Le prix n'est pas affecté pour l'acheteur.</p></div>
+  <div style="background:white;border:1px solid #e8d5c0;border-radius:12px;padding:28px;"><h3 style="font-size:0.8rem;letter-spacing:0.18em;text-transform:uppercase;color:#c8813a;font-weight:700;margin-bottom:12px;">Données personnelles & RGPD</h3><p style="font-size:0.88rem;">Ce site ne collecte aucune donnée personnelle sans consentement. Si vous acceptez de recevoir nos communications, votre email sera utilisé uniquement pour vous envoyer des informations liées à Mochi le Golden Retriever. Vous pouvez vous désabonner à tout moment.</p></div>
+</div>
+
+<!-- CONTACT -->
+<div class="section-wrap" id="contact">
+  <div class="section-label">Nous retrouver</div>
+  <h2>Nous contacter 🐾</h2>
+  <p>Rejoignez-nous sur nos réseaux pour suivre les aventures de Mochi !</p>
+  <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:20px;">
+    <a href="https://www.instagram.com/mochi.legoldenretriever?igsh=eG8xYXMxMXNicXBl&utm_source=qr" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:white;border:1.5px solid #e8d5c0;border-radius:8px;padding:10px 18px;text-decoration:none;color:#6b4226;font-size:0.88rem;font-weight:700;">📸 Instagram</a>
+    <a href="https://www.facebook.com/people/Mochi-Legoldenretriever/61561899467666/?mibextid=wwXIfr" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:white;border:1.5px solid #e8d5c0;border-radius:8px;padding:10px 18px;text-decoration:none;color:#6b4226;font-size:0.88rem;font-weight:700;">📘 Facebook</a>
+    <a href="https://www.tiktok.com/@mochi.legoldenretriever?_r=1&_t=ZN-95vNlHmVzWw" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:white;border:1.5px solid #e8d5c0;border-radius:8px;padding:10px 18px;text-decoration:none;color:#6b4226;font-size:0.88rem;font-weight:700;">🎵 TikTok</a>
+    <a href="https://www.vinted.fr/member/3126118280-nahomiestudio" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;background:white;border:1.5px solid #e8d5c0;border-radius:8px;padding:10px 18px;text-decoration:none;color:#6b4226;font-size:0.88rem;font-weight:700;">🛍️ Vinted</a>
+    <a href="mailto:mochi.legoldenretriever@gmail.com" style="display:inline-flex;align-items:center;gap:8px;background:white;border:1.5px solid #e8d5c0;border-radius:8px;padding:10px 18px;text-decoration:none;color:#6b4226;font-size:0.88rem;font-weight:700;">✉️ Email</a>
+  </div>
+</div>
+
+<footer style="background:#2c1a0e;color:rgba(255,255,255,0.5);text-align:center;padding:32px 24px;font-size:0.78rem;line-height:1.8;">
+  <p><strong style="color:rgba(255,255,255,0.8);">© 2025 Helena CANOUSSAMY POULLE</strong> · Micro-entrepreneur · SIRET 88785110300069 · Montpellier</p>
+  <p style="margin-top:6px;">Contenu protégé — Reproduction, partage ou revente interdits</p>
+</footer>
+
+<script>
+  const PASSWORD = "Golden7";
+  function checkModal() {
+    const val = document.getElementById('modal-pw').value;
+    if (val === PASSWORD) {
+      document.getElementById('modal-overlay').classList.remove('active');
+      const section = document.getElementById('recettes-section');
+      section.classList.add('visible');
+      section.scrollIntoView({behavior: 'smooth'});
+    } else {
+      document.getElementById('modal-error').style.display = 'block';
+    }
+  }
+
+  // POPUP
+  function closePopup() {
+    document.getElementById('popup-overlay').classList.remove('active');
+    sessionStorage.setItem('popup-seen', '1');
+  }
+
+  async function submitPopup() {
+    const email = document.getElementById('popup-email').value;
+    const rgpd = document.getElementById('popup-rgpd').checked;
+    const error = document.getElementById('popup-error');
+    if (!email || !rgpd) {
+      error.style.display = 'block';
+      return;
+    }
+    error.style.display = 'none';
+    try {
+      await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email }),
+      });
+    } catch(e) {}
+    document.getElementById('popup-form').style.display = 'none';
+    document.getElementById('popup-success').style.display = 'block';
+    sessionStorage.setItem('popup-seen', '1');
+    setTimeout(() => closePopup(), 3000);
+  }
+
+  // Afficher la popup après 2 secondes
+  if (!sessionStorage.getItem('popup-seen')) {
+    setTimeout(() => {
+      document.getElementById('popup-overlay').classList.add('active');
+    }, 2000);
+  }
+</script>
+
+</body>
+</html>
